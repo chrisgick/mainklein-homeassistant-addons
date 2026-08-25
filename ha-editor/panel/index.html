@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HA Editor Chat</title>
+  <style>
+    :root { color-scheme: light dark; --fg:#1c1c1c; --muted:#666; --bg:#fff; --card:#f6f6f6;
+            --accent:#03a9f4; --ok:#2e7d32; --bad:#c62828; --pending:#f9a825; --border:#e0e0e0; }
+    @media (prefers-color-scheme: dark) { :root { --fg:#e8e8e8; --muted:#9aa; --bg:#111417;
+            --card:#1b1f24; --border:#2a2f36; } }
+    * { box-sizing: border-box; }
+    body { margin:0; font:14px/1.5 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+           color:var(--fg); background:var(--bg); }
+    header { padding:14px 16px; border-bottom:1px solid var(--border); font-weight:600; }
+    header small { display:block; font-weight:400; color:var(--muted); margin-top:2px; }
+    main { max-width:860px; margin:0 auto; padding:16px; }
+    .composer { display:flex; gap:8px; margin-bottom:14px; }
+    .composer textarea { flex:1; resize:vertical; min-height:52px; padding:10px; border-radius:8px;
+           border:1px solid var(--border); background:var(--card); color:var(--fg); font:inherit; }
+    button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff;
+           font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:default; }
+    .runs { display:flex; flex-direction:column; gap:14px; }
+    .run { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .run > .q { padding:10px 12px; background:var(--card); font-weight:600; }
+    .steps { list-style:none; margin:0; padding:6px 12px; }
+    .steps li { padding:3px 0; color:var(--muted); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+           font-size:12.5px; }
+    .steps li b { color:var(--fg); }
+    .result { padding:10px 12px; border-top:1px solid var(--border); display:flex; gap:10px;
+           align-items:center; flex-wrap:wrap; }
+    .badge { padding:2px 9px; border-radius:999px; font-size:12px; font-weight:600; color:#fff; }
+    .badge.ok{background:var(--ok)} .badge.bad{background:var(--bad)} .badge.pending{background:var(--pending)}
+    a.pr { color:var(--accent); font-weight:600; text-decoration:none; }
+    .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <header>HA Editor Chat
+    <small>Describe a change; it becomes a reviewed GitHub PR (never a live edit). CI validates before merge.</small>
+  </header>
+  <main>
+    <div class="composer">
+      <textarea id="prompt" placeholder="e.g. add an automation that turns off the porch light at sunrise"></textarea>
+      <button id="send">Send</button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="runs" id="runs"></div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

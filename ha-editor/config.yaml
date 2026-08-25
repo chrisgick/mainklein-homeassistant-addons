@@ -1,0 +1,42 @@
+# HA Editor Chat add-on (CF-7293). Sidebar AI chat that edits this HA config via
+# GitHub PRs (never live /config). Bundles the ha-editor pipeline.
+name: HA Editor Chat
+version: "0.1.0"
+slug: ha_editor
+description: AI chat that edits your Home Assistant config via reviewed GitHub PRs
+url: https://github.com/matthias537/mainklein-homeassistant-addons
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: manual
+init: false
+
+# Sidebar web UI via ingress (no panel_custom needed).
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:robot-happy
+panel_title: HA Editor
+panel_admin: true
+
+# Live-context grounding: SUPERVISOR_TOKEN → HA Core /states.
+homeassistant_api: true
+hassio_api: true
+host_network: false
+
+options:
+  repo_url: https://github.com/matthias537/mainklein-homeassistant-.git
+  base_branch: main
+  github_token: ""
+  agent_mode: stub
+  litellm_base_url: https://api.agiliton.cloud/llm
+  litellm_key: ""
+  model: mainklein-editor
+schema:
+  repo_url: url
+  base_branch: str
+  github_token: password
+  agent_mode: list(stub|claude)
+  litellm_base_url: url
+  litellm_key: password?
+  model: str
