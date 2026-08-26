@@ -1,9 +1,32 @@
 // HA Editor Chat panel — vanilla JS, ingress-safe (all fetches RELATIVE).
 // Streams NDJSON step events from the add-on backend and renders them.
+// Non-blocking: multiple messages can run in parallel (soft cap), each in its
+// own card, so the composer never locks while a run is in flight (CF-7293).
 const $ = (s) => document.querySelector(s);
 const runs = $("#runs");
 const promptEl = $("#prompt");
 const sendBtn = $("#send");
+const modeEl = $("#mode");
+
+// How many agent runs may be in flight at once. The backend is lock-free and
+// gives each run its own workdir/branch; this only protects the LiteLLM gateway
+// from too many parallel Claude sessions. Extra messages queue (FIFO).
+const MAX_CONCURRENT = 3;
+let inflight = 0;
+const queue = [];
+
+// Small live "N läuft · M wartet" indicator next to the grounding hint.
+const statusEl = el("span", "hint");
+statusEl.id = "runstatus";
+statusEl.style.marginLeft = "10px";
+$("#hint").after(statusEl);
+function updateStatus() {
+  const waiting = queue.length;
+  const parts = [];
+  if (inflight) parts.push(`${inflight} läuft`);
+  if (waiting) parts.push(`${waiting} in Warteschlange`);
+  statusEl.textContent = parts.length ? `· ${parts.join(" · ")}` : "";
+}
 
 // Show live-context availability (best-effort).
 fetch("api/ha/states")
@@ -47,10 +70,12 @@ function badge(state) {
   return b;
 }
 
-async function send() {
+// Submit: create the card, enqueue, and immediately free the composer. Never
+// disables input while a run streams — that was the old blocking behaviour.
+function submit() {
   const prompt = promptEl.value.trim();
   if (!prompt) return;
-  sendBtn.disabled = true;
+  const mode = modeEl.value;
   promptEl.value = "";
 
   const card = el("div", "run");
@@ -59,7 +84,27 @@ async function send() {
   card.appendChild(steps);
   runs.prepend(card);
 
-  const mode = document.querySelector("#mode").value;
+  const job = { card, steps, prompt, mode };
+  job.qli = el("li", null, "· wartet…");
+  steps.appendChild(job.qli);
+  queue.push(job);
+  pump();
+  promptEl.focus();
+}
+
+// Drain the queue up to the concurrency cap.
+function pump() {
+  while (inflight < MAX_CONCURRENT && queue.length) {
+    const job = queue.shift();
+    if (job.qli) { job.qli.remove(); job.qli = null; }
+    inflight++;
+    startRun(job).catch(() => {}).finally(() => { inflight--; updateStatus(); pump(); });
+  }
+  updateStatus();
+}
+
+async function startRun(job) {
+  const { card, steps, prompt, mode } = job;
   try {
     const res = await fetch(mode === "ask" ? "api/ask" : "api/chat", {
       method: "POST",
@@ -87,8 +132,6 @@ async function send() {
     renderResult(card, finalResult);
   } catch (e) {
     const li = el("li"); li.textContent = `❌ ${e.message || e}`; steps.appendChild(li);
-  } finally {
-    sendBtn.disabled = false;
   }
 }
 
@@ -127,5 +170,5 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-sendBtn.addEventListener("click", send);
-promptEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); });
+sendBtn.addEventListener("click", submit);
+promptEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit(); });
