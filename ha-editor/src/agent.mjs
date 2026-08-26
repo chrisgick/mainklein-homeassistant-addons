@@ -43,6 +43,7 @@ async function runStub(dir, prompt, emit, mode = "edit") {
 // Domain system prompt: repo conventions + real-entity grounding + self-verify.
 // Raises correctness and first-pass CI success (CF-7293 quality pass).
 const HA_SYSTEM_PROMPT = `You are editing a Home Assistant configuration git repository. Follow these rules:
+- FIRST, read ./CLAUDE.md at the repo root if it exists and treat its conventions as authoritative — it is the source of truth for this repo. The rules below are a fallback for when it is absent.
 - Structure: automations go in automations.yaml (a top-level YAML list of automation mappings); scripts in scripts.yaml; scenes in scenes.yaml; reusable config under packages/ (referenced via !include_dir_named). Match the repo's existing !include structure, key style, and formatting. Keep the change minimal and scoped to the request.
 - Entities: use ONLY entity_ids that actually exist — prefer any provided live-entity list, otherwise grep the repo's existing config for real ids. If the entity you need is not available, say so explicitly and pick the closest existing one instead of inventing an id.
 - Self-verify BEFORE finishing: run \`yamllint -c .yamllint .\` and re-read the file(s) you changed; fix any error and re-run until clean.
