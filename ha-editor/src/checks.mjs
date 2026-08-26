@@ -18,16 +18,24 @@ export async function yamllint(dir) {
   };
 }
 
-/** Validate every changed *.yaml parses (python3 yaml — no JS dep). */
+// Tolerant YAML parse: HA config uses custom tags (!include, !secret,
+// !include_dir_named, …) that a plain SafeLoader rejects. Register a catch-all
+// multi-constructor so we validate YAML *syntax* without resolving the tags
+// (the authoritative HA check-config runs in CI).
+const YAML_PARSE_PY = `
+import sys, yaml
+class L(yaml.SafeLoader): pass
+L.add_multi_constructor('', lambda loader, suffix, node: None)
+with open(sys.argv[1]) as f:
+    yaml.load(f, Loader=L)
+`;
+
+/** Validate every changed *.yaml parses (HA-tag-tolerant; python3 yaml, no JS dep). */
 export async function yamlParses(dir, files) {
   const yamls = files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
   const results = [];
   for (const f of yamls) {
-    const r = await run(
-      "python3",
-      ["-c", "import sys,yaml; yaml.safe_load(open(sys.argv[1]))", f],
-      { cwd: dir }
-    );
+    const r = await run("python3", ["-c", YAML_PARSE_PY, f], { cwd: dir });
     results.push({ file: f, ok: r.code === 0, error: r.code === 0 ? "" : r.stderr.trim() });
   }
   return { name: "yaml-parse", ok: results.every((x) => x.ok), files: results };
