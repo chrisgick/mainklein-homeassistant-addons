@@ -95,7 +95,6 @@ async function send() {
 function fmtUsage(u) {
   if (!u) return "";
   const parts = [];
-  if (typeof u.costUsd === "number") parts.push(`$${u.costUsd.toFixed(3)}`);
   if (u.turns) parts.push(`${u.turns} turns`);
   if (u.durationMs) parts.push(`${Math.round(u.durationMs / 1000)}s`);
   return parts.join(" · ");
