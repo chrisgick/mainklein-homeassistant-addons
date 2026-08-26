@@ -81,6 +81,7 @@ async function runClaude(dir, prompt, cfg, emit, mode = "edit") {
     ANTHROPIC_API_KEY: "", // force AUTH_TOKEN (bearer) path
   };
   let resultText = "";
+  let usage = null;
   const r = await run(cfg.claudeBin, args, {
     cwd: dir,
     env,
@@ -90,14 +91,17 @@ async function runClaude(dir, prompt, cfg, emit, mode = "edit") {
       try {
         const ev = JSON.parse(t);
         emit({ type: "agent", event: ev });
-        if (ev.type === "result" && typeof ev.result === "string") resultText = ev.result;
+        if (ev.type === "result") {
+          if (typeof ev.result === "string") resultText = ev.result;
+          usage = { costUsd: ev.total_cost_usd, turns: ev.num_turns, durationMs: ev.duration_ms };
+        }
       } catch {
         emit({ type: "agent_raw", text: t });
       }
     },
   });
   if (r.code !== 0) throw new Error(`claude -p exited ${r.code}: ${r.stderr}`);
-  return { summary: resultText || "claude run complete", mode: "claude" };
+  return { summary: resultText || "claude run complete", mode: "claude", usage };
 }
 
 export async function runAgent(dir, prompt, cfg, emit = () => {}, mode = "edit") {

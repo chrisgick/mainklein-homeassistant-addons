@@ -44,6 +44,7 @@ export async function runEdit(prompt, cfg, opts = {}) {
     step("agent", { mode: cfg.agentMode });
     const agent = await runAgent(dir, prompt, cfg, emit);
     result.summary = agent.summary;
+    if (agent.usage) result.usage = agent.usage;
 
     const files = await git.changedFiles(dir);
     step("changes", { files });
@@ -130,6 +131,7 @@ export async function runAsk(question, cfg, opts = {}) {
     step("ask", { mode: cfg.agentMode });
     const agent = await runAgent(dir, question, cfg, emit, "ask");
     result.answer = agent.summary;
+    if (agent.usage) result.usage = agent.usage;
     result.status = "answered";
     return result;
   } catch (err) {
