@@ -70,7 +70,7 @@ async function runClaude(dir, prompt, cfg, emit, mode = "edit") {
     "--verbose",
     "--include-partial-messages",
     "--bare",
-    "--permission-mode", "bypassPermissions",
+    "--permission-mode", "acceptEdits",
     "--model", cfg.llm.model,
     "--append-system-prompt", isAsk ? ASK_SYSTEM_PROMPT : HA_SYSTEM_PROMPT,
     "--allowedTools", ...(isAsk ? ASK_ALLOWED : cfg.allowedTools),
