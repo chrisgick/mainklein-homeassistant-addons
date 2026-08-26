@@ -36,6 +36,15 @@ async function runStub(dir, prompt, emit) {
   return { summary: `stub: appended automation "${r.stdout.trim()}" to automations.yaml`, mode: "stub" };
 }
 
+// Domain system prompt: repo conventions + real-entity grounding + self-verify.
+// Raises correctness and first-pass CI success (CF-7293 quality pass).
+const HA_SYSTEM_PROMPT = `You are editing a Home Assistant configuration git repository. Follow these rules:
+- Structure: automations go in automations.yaml (a top-level YAML list of automation mappings); scripts in scripts.yaml; scenes in scenes.yaml; reusable config under packages/ (referenced via !include_dir_named). Match the repo's existing !include structure, key style, and formatting. Keep the change minimal and scoped to the request.
+- Entities: use ONLY entity_ids that actually exist — prefer any provided live-entity list, otherwise grep the repo's existing config for real ids. If the entity you need is not available, say so explicitly and pick the closest existing one instead of inventing an id.
+- Self-verify BEFORE finishing: run \`yamllint -c .yamllint .\` and re-read the file(s) you changed; fix any error and re-run until clean.
+- NEVER edit secrets.yaml (SOPS-encrypted) or anything under .storage/.
+- Finish with a brief note of what you changed and which entities it affects.`;
+
 async function runClaude(dir, prompt, cfg, emit) {
   if (!cfg.claudeBin) throw new Error("claude CLI not found (set HA_CLAUDE_BIN)");
   // NOTE: flag names verified against the headless docs (CF-7293 research); if the
@@ -52,6 +61,7 @@ async function runClaude(dir, prompt, cfg, emit) {
     "--bare",
     "--permission-mode", "dontAsk",
     "--model", cfg.llm.model,
+    "--append-system-prompt", HA_SYSTEM_PROMPT,
     "--allowedTools", ...cfg.allowedTools,
     "--disallowedTools", ...cfg.disallowedTools,
   ];
