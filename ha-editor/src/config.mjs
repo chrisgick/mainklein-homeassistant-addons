@@ -47,8 +47,13 @@ export function loadConfig(overrides = {}) {
     allowedTools: [
       "Read",
       "Edit",
+      "Write",
+      "Grep",
+      "Glob",
       "Bash(git status)",
       "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git grep:*)",
       "Bash(yamllint:*)",
     ],
     disallowedTools: [
