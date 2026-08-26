@@ -59,11 +59,12 @@ async function send() {
   card.appendChild(steps);
   runs.prepend(card);
 
+  const mode = document.querySelector("#mode").value;
   try {
-    const res = await fetch("api/chat", {
+    const res = await fetch(mode === "ask" ? "api/ask" : "api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(mode === "ask" ? { question: prompt } : { prompt }),
     });
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -92,8 +93,13 @@ async function send() {
 }
 
 function renderResult(card, r) {
+  if (!r) { card.appendChild(el("div", "result", "no result")); return; }
+  // Ask mode: render the answer, no PR card.
+  if (r.mode === "ask" || r.answer !== undefined) {
+    card.appendChild(el("div", "answer", r.answer || r.error || "(no answer)"));
+    return;
+  }
   const box = el("div", "result");
-  if (!r) { box.appendChild(el("span", null, "no result")); card.appendChild(box); return; }
   box.appendChild(badge(r.status));
   if (r.prUrl) {
     const a = el("a", "pr", `View PR`);

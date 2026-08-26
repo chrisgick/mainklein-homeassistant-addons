@@ -29,7 +29,11 @@ with open(p, "w") as f:
 print(entry["alias"])
 `;
 
-async function runStub(dir, prompt, emit) {
+async function runStub(dir, prompt, emit, mode = "edit") {
+  if (mode === "ask") {
+    emit({ type: "note", text: "stub ask: no model — set agent_mode=claude for real answers." });
+    return { summary: "Stub mode: set agent_mode to 'claude' to get real answers about your config.", mode: "ask-stub" };
+  }
   emit({ type: "note", text: `stub agent: appending a sample automation (prompt ignored: ${prompt.slice(0, 80)})` });
   const r = await run("python3", ["-c", STUB_APPEND_PY, "automations.yaml"], { cwd: dir });
   if (r.code !== 0) throw new Error(`stub edit failed: ${r.stderr || r.stdout}`);
@@ -45,8 +49,14 @@ const HA_SYSTEM_PROMPT = `You are editing a Home Assistant configuration git rep
 - NEVER edit secrets.yaml (SOPS-encrypted) or anything under .storage/.
 - Finish with a brief note of what you changed and which entities it affects.`;
 
-async function runClaude(dir, prompt, cfg, emit) {
+// Read-only Q&A mode: answer questions about the config, never modify it.
+const ASK_SYSTEM_PROMPT = `You are a read-only assistant answering questions about a Home Assistant configuration git repository. Read and grep the files to answer accurately. Do NOT edit, create, or delete anything. Cite the file(s) and entity_ids you reference; if something is not in the config, say so plainly.`;
+const ASK_ALLOWED = ["Read", "Grep", "Bash(git log:*)", "Bash(git grep:*)", "Bash(grep:*)"];
+const ASK_DISALLOWED = ["Edit", "Write", "Bash(git push:*)", "Bash(git commit:*)", "Bash(rm:*)"];
+
+async function runClaude(dir, prompt, cfg, emit, mode = "edit") {
   if (!cfg.claudeBin) throw new Error("claude CLI not found (set HA_CLAUDE_BIN)");
+  const isAsk = mode === "ask";
   // NOTE: flag names verified against the headless docs (CF-7293 research); if the
   // installed CLI rejects one, adjust here — claude mode is exercised only after
   // Phase 0 deploy, so this path is validated then.
@@ -61,9 +71,9 @@ async function runClaude(dir, prompt, cfg, emit) {
     "--bare",
     "--permission-mode", "dontAsk",
     "--model", cfg.llm.model,
-    "--append-system-prompt", HA_SYSTEM_PROMPT,
-    "--allowedTools", ...cfg.allowedTools,
-    "--disallowedTools", ...cfg.disallowedTools,
+    "--append-system-prompt", isAsk ? ASK_SYSTEM_PROMPT : HA_SYSTEM_PROMPT,
+    "--allowedTools", ...(isAsk ? ASK_ALLOWED : cfg.allowedTools),
+    "--disallowedTools", ...(isAsk ? ASK_DISALLOWED : cfg.disallowedTools),
   ];
   const env = {
     ANTHROPIC_BASE_URL: cfg.llm.baseUrl,
@@ -90,8 +100,8 @@ async function runClaude(dir, prompt, cfg, emit) {
   return { summary: resultText || "claude run complete", mode: "claude" };
 }
 
-export async function runAgent(dir, prompt, cfg, emit = () => {}) {
+export async function runAgent(dir, prompt, cfg, emit = () => {}, mode = "edit") {
   return cfg.agentMode === "claude"
-    ? runClaude(dir, prompt, cfg, emit)
-    : runStub(dir, prompt, emit);
+    ? runClaude(dir, prompt, cfg, emit, mode)
+    : runStub(dir, prompt, emit, mode);
 }

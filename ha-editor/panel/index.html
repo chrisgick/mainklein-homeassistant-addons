@@ -34,6 +34,11 @@
     .badge.ok{background:var(--ok)} .badge.bad{background:var(--bad)} .badge.pending{background:var(--pending)}
     a.pr { color:var(--accent); font-weight:600; text-decoration:none; }
     .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+    .ctl { display:flex; flex-direction:column; gap:6px; }
+    .ctl select { padding:6px 8px; border-radius:8px; border:1px solid var(--border);
+           background:var(--card); color:var(--fg); font:inherit; }
+    .answer { padding:10px 12px; border-top:1px solid var(--border); white-space:pre-wrap;
+           word-break:break-word; }
   </style>
 </head>
 <body>
@@ -43,7 +48,13 @@
   <main>
     <div class="composer">
       <textarea id="prompt" placeholder="e.g. add an automation that turns off the porch light at sunrise"></textarea>
-      <button id="send">Send</button>
+      <div class="ctl">
+        <select id="mode" title="Edit opens a PR; Ask just answers (no changes)">
+          <option value="edit">Edit → PR</option>
+          <option value="ask">Ask (read-only)</option>
+        </select>
+        <button id="send">Send</button>
+      </div>
     </div>
     <div class="hint" id="hint"></div>
     <div class="runs" id="runs"></div>

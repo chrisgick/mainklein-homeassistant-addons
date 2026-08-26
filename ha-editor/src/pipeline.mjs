@@ -107,3 +107,37 @@ export async function runEdit(prompt, cfg, opts = {}) {
     if (!opts.keepWorkdir) await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
+
+/**
+ * Read-only Q&A: clone → answer a question about the config → return the answer.
+ * No branch, no gate, no commit, no push, no PR. (CF-7293 Ask mode.)
+ */
+export async function runAsk(question, cfg, opts = {}) {
+  const emit = opts.emit ?? (() => {});
+  const runId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const dir = path.join(cfg.workRoot, runId);
+  const result = { runId, mode: "ask", status: "started", steps: [] };
+  const step = (name, data = {}) => {
+    const s = { name, ...data };
+    result.steps.push(s);
+    emit({ type: "step", ...s });
+    return s;
+  };
+  try {
+    await mkdir(cfg.workRoot, { recursive: true });
+    step("clone", { repo: cfg.repoLocal || cfg.repoUrl, base: cfg.base });
+    await git.clone({ repoUrl: cfg.repoUrl, repoLocal: cfg.repoLocal, base: cfg.base, dir });
+    step("ask", { mode: cfg.agentMode });
+    const agent = await runAgent(dir, question, cfg, emit, "ask");
+    result.answer = agent.summary;
+    result.status = "answered";
+    return result;
+  } catch (err) {
+    result.status = "error";
+    result.error = String(err && err.message ? err.message : err);
+    step("error", { error: result.error });
+    return result;
+  } finally {
+    if (!opts.keepWorkdir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}

@@ -11,7 +11,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.mjs";
-import { runEdit } from "./pipeline.mjs";
+import { runEdit, runAsk } from "./pipeline.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PANEL_DIR = path.join(HERE, "..", "panel");
@@ -129,6 +129,41 @@ const server = http.createServer(async (req, res) => {
         }
       };
       const result = await runEdit(prompt, cfg, { emit });
+      res.write(JSON.stringify({ type: "result", result }) + "\n");
+      res.end();
+    });
+    return;
+  }
+
+  if (req.method === "POST" && p === "/api/ask") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", async () => {
+      let payload = {};
+      try {
+        payload = body ? JSON.parse(body) : {};
+      } catch {
+        res.writeHead(400, { "content-type": "application/json" }).end('{"error":"invalid json"}');
+        return;
+      }
+      const question = payload.question || payload.prompt;
+      if (!question) {
+        res.writeHead(400, { "content-type": "application/json" }).end('{"error":"question required"}');
+        return;
+      }
+      res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-cache" });
+      const cfg = loadConfig({});
+      // Ground with the live entity list (claude mode) so entity questions are accurate.
+      const states = cfg.agentMode === "claude" ? await haStates() : [];
+      const grounded = (states.length ? contextPreface(states) : "") + question;
+      const emit = (ev) => {
+        try {
+          res.write(JSON.stringify(ev) + "\n");
+        } catch {
+          /* client gone */
+        }
+      };
+      const result = await runAsk(grounded, cfg, { emit });
       res.write(JSON.stringify({ type: "result", result }) + "\n");
       res.end();
     });
