@@ -36,7 +36,7 @@ export async function runEdit(prompt, cfg, opts = {}) {
   try {
     await mkdir(cfg.workRoot, { recursive: true });
     step("clone", { repo: cfg.repoLocal || cfg.repoUrl, base: cfg.base });
-    await git.clone({ repoUrl: cfg.repoUrl, repoLocal: cfg.repoLocal, base: cfg.base, dir });
+    await git.clone({ repoUrl: cfg.repoUrl, repoLocal: cfg.repoLocal, base: cfg.base, dir, githubToken: cfg.githubToken });
 
     step("branch", { branch });
     await git.createBranch(dir, branch);
@@ -75,7 +75,7 @@ export async function runEdit(prompt, cfg, opts = {}) {
     }
 
     if (!cfg.githubToken) throw new Error("GITHUB_TOKEN required to push/open PR (or use --dry-run)");
-    await git.rebaseOntoBase(dir, cfg.base);
+    await git.rebaseOntoBase(dir, cfg.base, cfg.githubToken);
     await git.push(dir, branch, cfg.githubToken);
     step("push", { branch });
 
@@ -127,7 +127,7 @@ export async function runAsk(question, cfg, opts = {}) {
   try {
     await mkdir(cfg.workRoot, { recursive: true });
     step("clone", { repo: cfg.repoLocal || cfg.repoUrl, base: cfg.base });
-    await git.clone({ repoUrl: cfg.repoUrl, repoLocal: cfg.repoLocal, base: cfg.base, dir });
+    await git.clone({ repoUrl: cfg.repoUrl, repoLocal: cfg.repoLocal, base: cfg.base, dir, githubToken: cfg.githubToken });
     step("ask", { mode: cfg.agentMode });
     const agent = await runAgent(dir, question, cfg, emit, "ask");
     result.answer = agent.summary;
