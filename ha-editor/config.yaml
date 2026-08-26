@@ -1,7 +1,7 @@
 # HA Editor Chat add-on (CF-7293). Sidebar AI chat that edits this HA config via
 # GitHub PRs (never live /config). Bundles the ha-editor pipeline.
 name: HA Editor Chat
-version: "0.1.1"
+version: "0.1.2"
 slug: ha_editor
 description: AI chat that edits your Home Assistant config via reviewed GitHub PRs
 url: https://github.com/matthias537/mainklein-homeassistant-addons

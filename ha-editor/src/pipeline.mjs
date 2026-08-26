@@ -22,9 +22,13 @@ function slug(s) {
  */
 export async function runEdit(prompt, cfg, opts = {}) {
   const emit = opts.emit ?? (() => {});
+  // Title/slug off the raw user request when supplied — the caller may pass a
+  // grounded `prompt` (live-entity preface + request) to the agent, but the PR
+  // title, branch name and commit subject must reflect what the user asked.
+  const title = opts.title || prompt;
   const runId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const dir = path.join(cfg.workRoot, runId);
-  const branch = `ai/${slug(prompt)}-${runId}`;
+  const branch = `ai/${slug(title)}-${runId}`;
   const result = { runId, branch, status: "started", steps: [] };
   const step = (name, data = {}) => {
     const s = { name, ...data };
@@ -63,7 +67,7 @@ export async function runEdit(prompt, cfg, opts = {}) {
     }
 
     result.diffStat = await git.diffStat(dir); // working tree vs HEAD, before commit
-    const commitMsg = `AI: ${prompt}\n\n${agent.summary}\n\nAuthored by ha-editor (CF-7293). Review before merge.`;
+    const commitMsg = `AI: ${title}\n\n${agent.summary}\n\nAuthored by ha-editor (CF-7293). Review before merge.`;
     const sha = await git.commitAll(dir, commitMsg);
     result.sha = sha;
     step("commit", { sha, diffStat: result.diffStat });
@@ -83,7 +87,7 @@ export async function runEdit(prompt, cfg, opts = {}) {
       dir,
       base: cfg.base,
       head: branch,
-      title: `AI: ${prompt}`.slice(0, 72),
+      title: `AI: ${title}`.slice(0, 72),
       body: `${agent.summary}\n\n---\nAuthored by **ha-editor** (CF-7293). CI (yamllint + HA check-config) must pass before merge.`,
       githubToken: cfg.githubToken,
     });

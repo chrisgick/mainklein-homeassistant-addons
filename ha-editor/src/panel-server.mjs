@@ -128,7 +128,9 @@ const server = http.createServer(async (req, res) => {
           /* client gone */
         }
       };
-      const result = await runEdit(prompt, cfg, { emit });
+      // Pass the raw user request as the title so the PR/branch/commit reflect
+      // what was asked, not the live-entity grounding preface prepended above.
+      const result = await runEdit(prompt, cfg, { emit, title: payload.prompt });
       res.write(JSON.stringify({ type: "result", result }) + "\n");
       res.end();
     });
